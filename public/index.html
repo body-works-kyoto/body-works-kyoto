@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nourish - カロリー管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cream: #faf7f2;
+      --cream-dark: #f0ebe0;
+      --green: #4a7c59;
+      --green-light: #7aab8a;
+      --green-pale: #e8f0ea;
+      --terra: #c5714a;
+      --terra-light: #e8956e;
+      --brown: #3d2b1f;
+      --gray: #8a7e74;
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: -apple-system, 'Hiragino Sans', 'Helvetica Neue', sans-serif;
+      background: var(--cream);
+      color: var(--brown);
+      min-height: 100vh;
+      max-width: 430px;
+      margin: 0 auto;
+    }
+
+    /* Setup Screen */
+    #setup-screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    .setup-logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .setup-logo .icon { font-size: 56px; margin-bottom: 12px; }
+    .setup-logo h1 { font-size: 32px; font-weight: 700; color: var(--green); letter-spacing: 2px; }
+    .setup-logo p { color: var(--gray); font-size: 14px; margin-top: 6px; }
+
+    .setup-card {
+      background: var(--white);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 4px 24px rgba(74, 124, 89, 0.1);
+    }
+
+    .setup-card h2 { font-size: 18px; color: var(--brown); margin-bottom: 20px; }
+
+    .field { margin-bottom: 18px; }
+    .field label { display: block; font-size: 12px; color: var(--gray); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .gender-buttons { display: flex; gap: 10px; }
+    .gender-btn {
+      flex: 1; padding: 12px; border: 2px solid var(--cream-dark); border-radius: 14px;
+      background: var(--cream); cursor: pointer; font-size: 14px; font-weight: 600;
+      color: var(--gray); transition: all 0.2s;
+    }
+    .gender-btn.active { border-color: var(--green); background: var(--green-pale); color: var(--green); }
+
+    input[type="number"] {
+      width: 100%; padding: 13px 16px; border: 2px solid var(--cream-dark);
+      border-radius: 14px; font-size: 16px; background: var(--cream);
+      color: var(--brown); outline: none; transition: border-color 0.2s;
+    }
+    input[type="number"]:focus { border-color: var(--green); background: var(--white); }
+
+    .start-btn {
+      width: 100%; padding: 16px; background: var(--green); color: white;
+      border: none; border-radius: 16px; font-size: 16px; font-weight: 700;
+      cursor: pointer; margin-top: 8px; transition: background 0.2s;
+    }
+    .start-btn:hover { background: var(--green-light); }
+
+    /* Main App */
+    #app-screen { display: none; }
+
+    .header {
+      background: var(--white);
+      padding: 20px 24px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--cream-dark);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-logo { font-size: 20px; font-weight: 700; color: var(--green); letter-spacing: 1px; }
+    .header-date { font-size: 12px; color: var(--gray); }
+    .reset-btn { font-size: 12px; color: var(--gray); background: none; border: none; cursor: pointer; }
+
+    .content { padding: 20px 24px 100px; }
+
+    /* Calorie Ring */
+    .ring-card {
+      background: var(--white); border-radius: 24px; padding: 28px;
+      box-shadow: 0 4px 24px rgba(74, 124, 89, 0.08); margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .ring-wrapper { position: relative; width: 180px; height: 180px; margin: 0 auto 20px; }
+
+    .ring-svg { transform: rotate(-90deg); }
+
+    .ring-track { fill: none; stroke: var(--cream-dark); stroke-width: 14; }
+    .ring-progress { fill: none; stroke-width: 14; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+
+    .ring-center {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%); text-align: center;
+    }
+    .ring-remaining { font-size: 28px; font-weight: 800; color: var(--brown); line-height: 1; }
+    .ring-unit { font-size: 11px; color: var(--gray); margin-top: 2px; }
+    .ring-label { font-size: 10px; color: var(--gray); margin-top: 4px; }
+
+    .stats-row { display: flex; gap: 12px; }
+    .stat-item { flex: 1; text-align: center; }
+    .stat-value { font-size: 18px; font-weight: 700; }
+    .stat-label { font-size: 11px; color: var(--gray); margin-top: 2px; }
+    .stat-goal { color: var(--green); }
+    .stat-eaten { color: var(--terra); }
+    .stat-remaining { color: var(--brown); }
+
+    /* Meals */
+    .section-title {
+      font-size: 14px; font-weight: 700; color: var(--brown);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+    }
+
+    .meal-slots { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+    .meal-slot {
+      background: var(--white); border-radius: 18px;
+      overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    .meal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+    }
+
+    .meal-time { display: flex; align-items: center; gap: 8px; }
+    .meal-emoji { font-size: 20px; }
+    .meal-name { font-size: 14px; font-weight: 600; color: var(--brown); }
+    .meal-sub { font-size: 11px; color: var(--gray); }
+
+    .add-meal-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--green-pale); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--green); transition: background 0.2s;
+    }
+    .add-meal-btn:hover { background: var(--green); color: white; }
+
+    .meal-items { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+
+    .food-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--cream); border-radius: 12px; padding: 10px 12px;
+    }
+    .food-emoji { font-size: 22px; }
+    .food-info { flex: 1; }
+    .food-name { font-size: 13px; font-weight: 600; }
+    .food-desc { font-size: 11px; color: var(--gray); margin-top: 1px; }
+    .food-cal { font-size: 14px; font-weight: 700; color: var(--terra); }
+
+    .loading-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--cream); border-radius: 12px; padding: 14px 12px;
+    }
+    .spinner {
+      width: 20px; height: 20px; border: 2px solid var(--cream-dark);
+      border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 13px; color: var(--gray); }
+
+    /* Suggestion */
+    .suggest-card {
+      background: linear-gradient(135deg, var(--green), var(--green-light));
+      border-radius: 24px; padding: 20px;
+      box-shadow: 0 4px 24px rgba(74, 124, 89, 0.25); margin-bottom: 20px;
+    }
+    .suggest-title { color: white; font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .suggest-sub { color: rgba(255,255,255,0.75); font-size: 12px; margin-bottom: 16px; }
+
+    .suggest-btn {
+      background: white; color: var(--green); border: none; border-radius: 14px;
+      padding: 12px 20px; font-size: 14px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; transition: opacity 0.2s;
+    }
+    .suggest-btn:hover { opacity: 0.9; }
+
+    .suggest-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+    .suggest-item {
+      background: rgba(255,255,255,0.15); border-radius: 14px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .suggest-food-emoji { font-size: 24px; }
+    .suggest-food-info { flex: 1; }
+    .suggest-food-name { color: white; font-size: 13px; font-weight: 600; }
+    .suggest-food-reason { color: rgba(255,255,255,0.75); font-size: 11px; margin-top: 1px; }
+    .suggest-food-cal { color: white; font-size: 14px; font-weight: 700; }
+
+    /* Upload Modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(61, 43, 31, 0.5); z-index: 100;
+      align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--white); border-radius: 28px 28px 0 0;
+      padding: 28px 24px 40px; width: 100%; max-width: 430px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } }
+
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--cream-dark);
+      border-radius: 2px; margin: 0 auto 20px;
+    }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .modal p { font-size: 13px; color: var(--gray); margin-bottom: 24px; }
+
+    .upload-area {
+      border: 2px dashed var(--cream-dark); border-radius: 20px;
+      padding: 40px 20px; text-align: center; cursor: pointer;
+      transition: all 0.2s; background: var(--cream);
+    }
+    .upload-area:hover { border-color: var(--green); background: var(--green-pale); }
+    .upload-icon { font-size: 40px; margin-bottom: 10px; }
+    .upload-text { font-size: 14px; color: var(--gray); }
+    .upload-hint { font-size: 12px; color: var(--green); margin-top: 4px; font-weight: 600; }
+
+    input[type="file"] { display: none; }
+
+    .cancel-btn {
+      width: 100%; padding: 14px; background: var(--cream); color: var(--gray);
+      border: none; border-radius: 16px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-top: 12px;
+    }
+
+    /* Over budget warning */
+    .warning-text { color: var(--terra); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+  <div class="setup-logo">
+    <div class="icon">🥗</div>
+    <h1>Nourish</h1>
+    <p>写真でかんたんカロリー管理</p>
+  </div>
+
+  <div class="setup-card">
+    <h2>あなたの情報を教えてください</h2>
+
+    <div class="field">
+      <label>性別</label>
+      <div class="gender-buttons">
+        <button class="gender-btn active" data-gender="male">👨 男性</button>
+        <button class="gender-btn" data-gender="female">👩 女性</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>身長 (cm)</label>
+      <input type="number" id="height" placeholder="170" value="170">
+    </div>
+
+    <div class="field">
+      <label>体重 (kg)</label>
+      <input type="number" id="weight" placeholder="65" value="65">
+    </div>
+
+    <div class="field">
+      <label>目標体重 (kg)</label>
+      <input type="number" id="target-weight" placeholder="60" value="60">
+    </div>
+
+    <button class="start-btn" onclick="startApp()">はじめる 🌿</button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app-screen">
+  <div class="header">
+    <div>
+      <div class="header-logo">🥗 Nourish</div>
+      <div class="header-date" id="today-date"></div>
+    </div>
+    <button class="reset-btn" onclick="resetApp()">設定変更</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Calorie Ring -->
+    <div class="ring-card">
+      <div class="ring-wrapper">
+        <svg class="ring-svg" width="180" height="180" viewBox="0 0 180 180">
+          <circle class="ring-track" cx="90" cy="90" r="76"/>
+          <circle class="ring-progress" id="ring-path" cx="90" cy="90" r="76"
+            stroke-dasharray="477" stroke-dashoffset="477" stroke="var(--green)"/>
+        </svg>
+        <div class="ring-center">
+          <div class="ring-remaining" id="ring-remaining">—</div>
+          <div class="ring-unit">kcal</div>
+          <div class="ring-label">残り</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value stat-goal" id="stat-goal">—</div>
+          <div class="stat-label">目標</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-eaten" id="stat-eaten">0</div>
+          <div class="stat-label">摂取済み</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value stat-remaining" id="stat-remaining2">—</div>
+          <div class="stat-label">残り</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meals -->
+    <div class="section-title">🍽 今日の食事</div>
+    <div class="meal-slots">
+      <div class="meal-slot" id="slot-morning">
+        <div class="meal-header">
+          <div class="meal-time">
+            <div class="meal-emoji">🌅</div>
+            <div>
+              <div class="meal-name">朝ごはん</div>
+              <div class="meal-sub" id="sub-morning">まだ記録なし</div>
+            </div>
+          </div>
+          <button class="add-meal-btn" onclick="openModal('morning')">＋</button>
+        </div>
+        <div class="meal-items" id="items-morning"></div>
+      </div>
+
+      <div class="meal-slot" id="slot-lunch">
+        <div class="meal-header">
+          <div class="meal-time">
+            <div class="meal-emoji">☀️</div>
+            <div>
+              <div class="meal-name">昼ごはん</div>
+              <div class="meal-sub" id="sub-lunch">まだ記録なし</div>
+            </div>
+          </div>
+          <button class="add-meal-btn" onclick="openModal('lunch')">＋</button>
+        </div>
+        <div class="meal-items" id="items-lunch"></div>
+      </div>
+
+      <div class="meal-slot" id="slot-dinner">
+        <div class="meal-header">
+          <div class="meal-time">
+            <div class="meal-emoji">🌙</div>
+            <div>
+              <div class="meal-name">夜ごはん</div>
+              <div class="meal-sub" id="sub-dinner">まだ記録なし</div>
+            </div>
+          </div>
+          <button class="add-meal-btn" onclick="openModal('dinner')">＋</button>
+        </div>
+        <div class="meal-items" id="items-dinner"></div>
+      </div>
+    </div>
+
+    <!-- Dinner Suggestion -->
+    <div class="suggest-card" id="suggest-card">
+      <div class="suggest-title">🌙 夜ごはん何食べる？</div>
+      <div class="suggest-sub" id="suggest-sub">残りカロリーに合わせてAIが提案します</div>
+      <button class="suggest-btn" onclick="getSuggestion()">
+        ✨ 提案してもらう
+      </button>
+      <div class="suggest-list hidden" id="suggest-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="modal-title">朝ごはんを記録</h3>
+    <p>料理の写真を撮ってAIがカロリーを推定します</p>
+    <label class="upload-area" for="file-input">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">写真をタップして選択</div>
+      <div class="upload-hint">AI が自動でカロリーを計算</div>
+    </label>
+    <input type="file" id="file-input" accept="image/*" capture="environment" onchange="handleFile(event)">
+    <button class="cancel-btn" onclick="closeModal()">キャンセル</button>
+  </div>
+</div>
+
+<script>
+  let state = {
+    gender: 'male',
+    goalCalories: 0,
+    eatenCalories: 0,
+    meals: { morning: [], lunch: [], dinner: [] },
+    currentMeal: null
+  };
+
+  // Setup
+  document.querySelectorAll('.gender-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.gender = btn.dataset.gender;
+    });
+  });
+
+  function calcGoal(gender, weight, height) {
+    // Harris-Benedict BMR + moderate activity × diet factor
+    let bmr = gender === 'male'
+      ? 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * 30)
+      : 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * 30);
+    return Math.round(bmr * 1.375 - 500);
+  }
+
+  function startApp() {
+    const height = parseFloat(document.getElementById('height').value) || 170;
+    const weight = parseFloat(document.getElementById('weight').value) || 65;
+    state.goalCalories = calcGoal(state.gender, weight, height);
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+
+    const now = new Date();
+    document.getElementById('today-date').textContent =
+      now.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
+
+    updateUI();
+  }
+
+  function resetApp() {
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  }
+
+  // Modal
+  const mealNames = { morning: '朝ごはん', lunch: '昼ごはん', dinner: '夜ごはん' };
+
+  function openModal(meal) {
+    state.currentMeal = meal;
+    document.getElementById('modal-title').textContent = mealNames[meal] + 'を記録';
+    document.getElementById('modal').classList.add('show');
+    document.getElementById('file-input').value = '';
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+  }
+
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+  });
+
+  async function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    closeModal();
+
+    const meal = state.currentMeal;
+    const itemsEl = document.getElementById(`items-${meal}`);
+
+    // Show loading
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'loading-item';
+    loadingEl.innerHTML = '<div class="spinner"></div><div class="loading-text">AIが解析中...</div>';
+    itemsEl.appendChild(loadingEl);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('meal', mealNames[meal]);
+
+      const res = await fetch('/api/analyze-food', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      loadingEl.remove();
+
+      if (data.error) throw new Error(data.error);
+
+      state.meals[meal].push(data);
+      state.eatenCalories += data.calories;
+
+      renderFoodItem(itemsEl, data);
+      updateSub(meal);
+      updateUI();
+
+    } catch (err) {
+      loadingEl.innerHTML = '<div class="loading-text" style="color:var(--terra)">解析に失敗しました</div>';
+      setTimeout(() => loadingEl.remove(), 2000);
+    }
+  }
+
+  function renderFoodItem(container, data) {
+    const el = document.createElement('div');
+    el.className = 'food-item';
+    el.innerHTML = `
+      <div class="food-emoji">${data.emoji || '🍽'}</div>
+      <div class="food-info">
+        <div class="food-name">${data.name}</div>
+        <div class="food-desc">${data.description || ''}</div>
+      </div>
+      <div class="food-cal">${data.calories} kcal</div>
+    `;
+    container.appendChild(el);
+  }
+
+  function updateSub(meal) {
+    const total = state.meals[meal].reduce((s, i) => s + i.calories, 0);
+    document.getElementById(`sub-${meal}`).textContent =
+      total > 0 ? `合計 ${total} kcal` : 'まだ記録なし';
+  }
+
+  function updateUI() {
+    const goal = state.goalCalories;
+    const eaten = state.eatenCalories;
+    const remaining = Math.max(0, goal - eaten);
+    const over = eaten > goal;
+
+    document.getElementById('stat-goal').textContent = goal;
+    document.getElementById('stat-eaten').textContent = eaten;
+    document.getElementById('stat-remaining2').textContent = over ? 'オーバー' : remaining;
+    document.getElementById('ring-remaining').textContent = over ? '!' : remaining;
+
+    if (over) {
+      document.getElementById('ring-remaining').classList.add('warning-text');
+    } else {
+      document.getElementById('ring-remaining').classList.remove('warning-text');
+    }
+
+    // Ring
+    const pct = Math.min(eaten / goal, 1);
+    const circumference = 477;
+    const offset = circumference - pct * circumference;
+    const ring = document.getElementById('ring-path');
+    ring.style.strokeDashoffset = offset;
+    ring.style.stroke = over ? 'var(--terra)' : pct > 0.85 ? 'var(--terra-light)' : 'var(--green)';
+
+    // Update suggest sub
+    document.getElementById('suggest-sub').textContent =
+      `残り ${remaining} kcal でどんな夜ごはんが食べられる？`;
+  }
+
+  async function getSuggestion() {
+    const goal = state.goalCalories;
+    const eaten = state.eatenCalories;
+    const remaining = Math.max(0, goal - eaten);
+
+    const btn = document.querySelector('.suggest-btn');
+    btn.textContent = '✨ 考え中...';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/suggest-dinner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remaining, gender: state.gender })
+      });
+      const data = await res.json();
+
+      const listEl = document.getElementById('suggest-list');
+      listEl.innerHTML = '';
+      data.suggestions.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'suggest-item';
+        el.innerHTML = `
+          <div class="suggest-food-emoji">${s.emoji || '🍽'}</div>
+          <div class="suggest-food-info">
+            <div class="suggest-food-name">${s.name}</div>
+            <div class="suggest-food-reason">${s.reason}</div>
+          </div>
+          <div class="suggest-food-cal">${s.calories} kcal</div>
+        `;
+        listEl.appendChild(el);
+      });
+      listEl.classList.remove('hidden');
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      btn.textContent = '✨ もう一度提案';
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
