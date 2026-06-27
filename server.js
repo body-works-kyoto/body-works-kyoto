@@ -78,6 +78,39 @@ app.post('/api/suggest-dinner', async (req, res) => {
   }
 });
 
+app.post('/api/estimate-ai', upload.fields([{ name: 'damage', maxCount: 10 }, { name: 'shakken' }]), async (req, res) => {
+  try {
+    const content = [];
+    (req.files?.damage || []).forEach(f => {
+      content.push({ type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } });
+    });
+    if (req.files?.shakken?.[0]) {
+      const f = req.files.shakken[0];
+      content.push({ type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } });
+    }
+    const memo = req.body.memo || '';
+    content.push({ type: 'text', text: `あなたは日本の板金塗装の熟練見積もり職人です。損傷写真と車検証（あれば）を見て、以下のJSON形式のみで回答してください。
+単価：板金1指数=9000円、塗装1パネル=50000円
+${memo ? 'メモ：' + memo : ''}
+{
+  "car":{"model":"車種・グレード","fullModel":"フル型式","chassis":"車台番号","color":"ボデー色コードと名称","engine":"エンジン型式","regno":"登録番号"},
+  "itakin":[{"rl":"L/R/なし","name":"部位名","type":"鈑金/取替","detail":"損傷説明","index":数値,"partNo":"","partPrice":0}],
+  "toso":[{"rl":"L/R/なし","name":"塗装箇所名","type":"塗装","panels":数値,"partPrice":0}],
+  "parts":[{"name":"部品名","partNo":"部品番号","qty":1,"partPrice":数値,"laborPrice":数値}],
+  "damage":"損傷状況の総合説明（アジャスター向け）",
+  "other":{"photo":1000,"waste":2000,"short":2000}
+}` });
+
+    const response = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content }] });
+    const text = response.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    const data = JSON.parse(text);
+    res.json(data);
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ error: '解析に失敗しました' });
+  }
+});
+
 app.post('/api/read-shakken', upload.single('image'), async (req, res) => {
   try {
     const f = req.file;
