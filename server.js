@@ -78,6 +78,29 @@ app.post('/api/suggest-dinner', async (req, res) => {
   }
 });
 
+app.post('/api/read-shakken', upload.single('image'), async (req, res) => {
+  try {
+    const f = req.file;
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 512,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } },
+          { type: 'text', text: `この車検証の画像から情報を読み取り、以下のJSON形式のみで返してください（他のテキスト不要）。読み取れない項目は空文字にしてください。
+{"carModel":"車名と型式（例：マツダ CX-3 20S Lパッケージ）","fullModel":"フル型式（例：DKEFW）","chassis":"車台番号","color":"ボデー色（カラーコードと色名）","engine":"エンジン型式","regno":"登録番号（例：京都500あ1234）"}` }
+        ]
+      }]
+    });
+    const data = JSON.parse(response.content[0].text.trim());
+    res.json(data);
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ error: '読み取りに失敗しました' });
+  }
+});
+
 app.post('/api/estimate', upload.fields([{ name: 'images', maxCount: 10 }, { name: 'caution' }]), async (req, res) => {
   try {
     const content = [];

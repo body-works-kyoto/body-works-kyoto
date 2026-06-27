@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>お見積書 | BODY WORKS</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    :root{
+      --navy:#0f1f3d;--blue:#1d4ed8;--accent:#f59e0b;
+      --border:#ccc;--bg:#f0f4f8;--light:#f8fafc;
+    }
+    body{font-family:'MS Mincho','Hiragino Mincho ProN',serif;background:var(--bg);color:#000;font-size:12px;}
+
+    /* 画面上部ツールバー */
+    .toolbar{
+      background:var(--navy);color:#fff;padding:10px 16px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      font-family:-apple-system,sans-serif;
+      position:sticky;top:0;z-index:100;
+    }
+    .toolbar h1{font-size:15px;font-weight:700;}
+    .toolbar-btns{display:flex;gap:8px;}
+    .btn{padding:7px 14px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;}
+    .btn-save{background:#22c55e;color:#fff;}
+    .btn-load{background:#64748b;color:#fff;}
+    .btn-new{background:#dc2626;color:#fff;}
+    .btn-print{background:var(--accent);color:#fff;}
+
+    /* クイック入力パネル */
+    .quick-panel{
+      background:#1a2f55;padding:10px 16px;
+      font-family:-apple-system,sans-serif;
+    }
+    .quick-title{font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;letter-spacing:.05em;}
+    .quick-btns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+    .qbtn{
+      padding:5px 10px;border:1px solid #334155;border-radius:6px;
+      background:#0f1f3d;color:#cbd5e1;font-size:11px;cursor:pointer;
+      font-family:-apple-system,sans-serif;transition:all .15s;
+    }
+    .qbtn:hover{background:#2563eb;color:#fff;border-color:#2563eb;}
+    .qbtn.idx{background:#1e3a5f;color:#fbbf24;border-color:#f59e0b;}
+    .qbtn.idx:hover{background:#f59e0b;color:#fff;}
+    .quick-row{display:flex;align-items:center;gap:12px;}
+    .quick-section{flex:1;}
+
+    /* A4ページ */
+    .page{
+      width:210mm;min-height:297mm;
+      background:#fff;margin:16px auto;
+      padding:10mm 12mm;
+      box-shadow:0 2px 16px rgba(0,0,0,.15);
+    }
+
+    /* 見積書ヘッダー */
+    .doc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+    .doc-title-area{}
+    .doc-title{font-size:24px;font-weight:bold;letter-spacing:6px;margin-bottom:4px;}
+    .company-block{font-size:11px;line-height:1.7;}
+    .company-name{font-size:14px;font-weight:bold;}
+    .doc-meta{text-align:right;font-size:11px;line-height:2;}
+    .meta-row{display:flex;justify-content:flex-end;align-items:center;gap:4px;}
+    .meta-label{white-space:nowrap;}
+    .doc-meta input{
+      border:none;border-bottom:1px solid #999;
+      font-size:11px;font-family:inherit;
+      width:130px;text-align:right;outline:none;background:transparent;
+    }
+    .page-num{font-size:10px;color:#666;margin-top:2px;}
+
+    /* 車両情報 */
+    .vehicle-box{border:1.5px solid #888;margin-bottom:8px;}
+    .vehicle-grid{display:grid;grid-template-columns:1fr 1fr;}
+    .vehicle-left{border-right:1px solid #888;}
+    .vrow{display:flex;align-items:center;border-bottom:1px solid #ddd;}
+    .vrow:last-child{border-bottom:none;}
+    .vlabel{
+      background:#efefef;border-right:1px solid #ccc;
+      padding:3px 6px;font-size:10px;white-space:nowrap;
+      min-width:68px;text-align:center;font-weight:bold;
+    }
+    .vrow input{
+      border:none;font-size:11px;font-family:inherit;
+      flex:1;outline:none;padding:3px 6px;background:transparent;
+    }
+
+    /* 損傷状況 */
+    .damage-box{border:1.5px solid #888;margin-bottom:8px;padding:6px 8px;}
+    .damage-title{font-size:10px;font-weight:bold;background:#efefef;padding:1px 6px;display:inline-block;margin-bottom:4px;}
+    .damage-box textarea{
+      width:100%;border:none;font-size:11px;font-family:inherit;
+      resize:none;outline:none;min-height:36px;
+    }
+
+    /* 明細テーブル */
+    .section-bar{
+      background:#1a2f55;color:#fff;
+      padding:3px 8px;font-size:11px;font-weight:bold;
+      margin-top:8px;letter-spacing:.1em;
+    }
+    table.dtbl{width:100%;border-collapse:collapse;border:1.5px solid #888;font-size:10.5px;}
+    table.dtbl th{
+      background:#e8e8e8;border:1px solid #aaa;
+      padding:3px 4px;text-align:center;font-weight:bold;font-size:10px;white-space:nowrap;
+    }
+    table.dtbl td{border:1px solid #ddd;padding:2px 4px;vertical-align:middle;}
+    table.dtbl td input{
+      border:none;width:100%;font-size:10.5px;font-family:inherit;
+      outline:none;background:transparent;
+    }
+    table.dtbl td.r{text-align:right;}
+    table.dtbl td.c{text-align:center;}
+    table.dtbl td.amt{text-align:right;font-weight:bold;white-space:nowrap;}
+    .w-rl{width:28px;}
+    .w-name{width:auto;}
+    .w-type{width:48px;}
+    .w-no{width:82px;}
+    .w-qty{width:32px;}
+    .w-idx{width:40px;}
+    .w-price{width:66px;}
+    .w-tech{width:66px;}
+    .w-del{width:20px;}
+
+    .btn-add-row{
+      width:100%;border:1px dashed #bbb;border-top:none;
+      background:#fafafa;padding:3px;font-size:11px;color:#888;
+      cursor:pointer;font-family:-apple-system,sans-serif;
+    }
+    .btn-add-row:hover{background:#eff6ff;color:#2563eb;}
+    .bdel{border:none;background:none;color:#ddd;cursor:pointer;font-size:13px;line-height:1;padding:0;}
+    .bdel:hover{color:#dc2626;}
+
+    /* その他費用 */
+    .other-box{border:1.5px solid #888;border-top:none;padding:4px 8px;background:#fafafa;}
+    .other-row{display:flex;align-items:center;gap:8px;padding:2px 0;border-bottom:1px solid #eee;}
+    .other-row:last-child{border-bottom:none;}
+    .other-row input{border:none;border-bottom:1px solid #ddd;font-size:11px;font-family:inherit;outline:none;background:transparent;}
+    .other-label{font-size:10px;color:#666;white-space:nowrap;}
+
+    /* 下部エリア */
+    .bottom-area{display:flex;gap:10px;margin-top:10px;}
+
+    /* 備考・協定欄 */
+    .left-bottom{flex:1;display:flex;flex-direction:column;gap:8px;}
+    .remarks-box{border:1.5px solid #888;padding:6px 8px;flex:1;}
+    .box-title{font-size:10px;font-weight:bold;background:#efefef;padding:1px 6px;display:inline-block;margin-bottom:4px;}
+    .remarks-box textarea{width:100%;border:none;font-size:11px;font-family:inherit;resize:none;outline:none;min-height:50px;}
+
+    .adjuster-box{border:1.5px solid #c0392b;padding:6px 8px;}
+    .adjuster-title{font-size:10px;font-weight:bold;background:#c0392b;color:#fff;padding:1px 6px;display:inline-block;margin-bottom:4px;}
+    .adj-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+    .adj-row{display:flex;align-items:center;gap:4px;}
+    .adj-label{font-size:10px;color:#666;white-space:nowrap;min-width:60px;}
+    .adj-row input{border:none;border-bottom:1px solid #ccc;font-size:11px;font-family:inherit;flex:1;outline:none;background:transparent;}
+    .stamp-area{
+      border:1px solid #999;width:60px;height:60px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:9px;color:#999;margin-top:4px;
+    }
+
+    /* 合計 */
+    .totals-box{width:210px;border:1.5px solid #888;font-size:11px;}
+    .trow{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid #ddd;}
+    .trow:last-child{border-bottom:none;}
+    .trow.sub{background:#f8f8f8;font-weight:bold;}
+    .trow.grand{
+      background:#0f1f3d;color:#fff;font-size:15px;font-weight:bold;
+      padding:7px 10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+    }
+    .trow .tl{color:#444;}
+    .trow.grand .tl{color:#fff;}
+    .trow.grand .tv{color:#fbbf24;}
+    .trow input{
+      border:none;border-bottom:1px solid #ddd;
+      font-size:11px;font-family:inherit;width:70px;
+      text-align:right;outline:none;background:transparent;
+    }
+
+    .footer-note{margin-top:6px;font-size:9px;color:#888;text-align:right;font-family:-apple-system,sans-serif;}
+
+    /* 印刷 */
+    @media print{
+      body{background:#fff;}
+      .toolbar,.quick-panel,.btn-add-row,.bdel,.no-print{display:none!important;}
+      .page{margin:0;padding:8mm 10mm;box-shadow:none;width:100%;}
+      table.dtbl td input,.vrow input,.doc-meta input,.remarks-box textarea,
+      .damage-box textarea,.adj-row input,.other-row input{border:none!important;}
+      .trow.grand{background:#0f1f3d!important;}
+      @page{margin:0;size:A4;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ツールバー -->
+<div class="toolbar no-print">
+  <h1>⚙ BODY WORKS 見積書</h1>
+  <div class="toolbar-btns">
+    <button class="btn btn-save" onclick="saveEstimate()">💾 保存</button>
+    <button class="btn btn-load" onclick="loadEstimate()">📂 呼出</button>
+    <button class="btn btn-new" onclick="newEstimate()">＋ 新規</button>
+    <button class="btn btn-print" onclick="window.print()">🖨 印刷/PDF</button>
+  </div>
+</div>
+
+<!-- クイック入力パネル -->
+<div class="quick-panel no-print">
+  <div class="quick-row">
+    <div class="quick-section">
+      <div class="quick-title">▶ 板金クイック追加（部位をタップ）</div>
+      <div class="quick-btns" id="quick-itakin">
+        <button class="qbtn" onclick="quickAdd('itakin','フロントバンパー','鈑金')">Fバンパー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','リアバンパー','鈑金')">Rバンパー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','ボンネット','鈑金')">ボンネット</button>
+        <button class="qbtn" onclick="quickAdd('itakin','左フロントフェンダー','鈑金')">左Fフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','右フロントフェンダー','鈑金')">右Fフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','左フロントドア','鈑金')">左Fドア</button>
+        <button class="qbtn" onclick="quickAdd('itakin','右フロントドア','鈑金')">右Fドア</button>
+        <button class="qbtn" onclick="quickAdd('itakin','左リアドア','鈑金')">左Rドア</button>
+        <button class="qbtn" onclick="quickAdd('itakin','右リアドア','鈑金')">右Rドア</button>
+        <button class="qbtn" onclick="quickAdd('itakin','左リアフェンダー','鈑金')">左Rフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','右リアフェンダー','鈑金')">右Rフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('itakin','トランクリッド','鈑金')">トランク</button>
+        <button class="qbtn" onclick="quickAdd('itakin','ルーフ','鈑金')">ルーフ</button>
+        <button class="qbtn" onclick="quickAdd('itakin','サイドシル','鈑金')">サイドシル</button>
+        <button class="qbtn" onclick="quickAdd('itakin','ピラー','鈑金')">ピラー</button>
+      </div>
+    </div>
+    <div class="quick-section">
+      <div class="quick-title">▶ 塗装クイック追加</div>
+      <div class="quick-btns">
+        <button class="qbtn" onclick="quickAdd('toso','フロントバンパー塗装','塗装')">Fバンパー</button>
+        <button class="qbtn" onclick="quickAdd('toso','リアバンパー塗装','塗装')">Rバンパー</button>
+        <button class="qbtn" onclick="quickAdd('toso','ボンネット塗装','塗装')">ボンネット</button>
+        <button class="qbtn" onclick="quickAdd('toso','左Fフェンダー塗装','塗装')">左Fフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('toso','右Fフェンダー塗装','塗装')">右Fフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('toso','左フロントドア塗装','塗装')">左Fドア</button>
+        <button class="qbtn" onclick="quickAdd('toso','右フロントドア塗装','塗装')">右Fドア</button>
+        <button class="qbtn" onclick="quickAdd('toso','左リアドア塗装','塗装')">左Rドア</button>
+        <button class="qbtn" onclick="quickAdd('toso','右リアドア塗装','塗装')">右Rドア</button>
+        <button class="qbtn" onclick="quickAdd('toso','左リアフェンダー塗装','塗装')">左Rフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('toso','右リアフェンダー塗装','塗装')">右Rフェンダー</button>
+        <button class="qbtn" onclick="quickAdd('toso','トランクリッド塗装','塗装')">トランク</button>
+        <button class="qbtn" onclick="quickAdd('toso','ルーフ塗装','塗装')">ルーフ</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:8px;">
+    <div class="quick-title">▶ 指数クイック入力（選択中の指数欄に入力）</div>
+    <div class="quick-btns">
+      <button class="qbtn idx" onclick="setIdx(0.3)">0.3</button>
+      <button class="qbtn idx" onclick="setIdx(0.5)">0.5</button>
+      <button class="qbtn idx" onclick="setIdx(0.7)">0.7</button>
+      <button class="qbtn idx" onclick="setIdx(1.0)">1.0</button>
+      <button class="qbtn idx" onclick="setIdx(1.5)">1.5</button>
+      <button class="qbtn idx" onclick="setIdx(2.0)">2.0</button>
+      <button class="qbtn idx" onclick="setIdx(2.5)">2.5</button>
+      <button class="qbtn idx" onclick="setIdx(3.0)">3.0</button>
+      <button class="qbtn idx" onclick="setIdx(3.5)">3.5</button>
+      <button class="qbtn idx" onclick="setIdx(4.0)">4.0</button>
+      <button class="qbtn idx" onclick="setIdx(4.5)">4.5</button>
+      <button class="qbtn idx" onclick="setIdx(5.0)">5.0</button>
+      <button class="qbtn idx" onclick="setIdx(6.0)">6.0</button>
+      <button class="qbtn idx" onclick="setIdx(7.0)">7.0</button>
+      <button class="qbtn idx" onclick="setIdx(8.0)">8.0</button>
+    </div>
+  </div>
+</div>
+
+<!-- A4見積書 -->
+<div class="page">
+
+  <!-- ヘッダー -->
+  <div class="doc-top">
+    <div class="doc-title-area">
+      <div class="doc-title">お 見 積 書</div>
+      <div class="company-block">
+        <div class="company-name">合同会社エナジー　BODY WORKS</div>
+        <div style="font-size:10px;">〒610-0343 京都府京田辺市大住杉ノ森7</div>
+        <div style="font-size:10px;">登録番号（適格請求書発行事業者番号）：</div>
+        <div style="font-size:10px;">板金工賃：9,000円/指数　塗装工賃：50,000円/パネル</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="meta-row"><span class="meta-label">伝 票 番 号 ：</span><input id="slip-no" placeholder="0000001"></div>
+      <div class="meta-row"><span class="meta-label">発 行 日 付 ：</span><input id="issue-date"></div>
+      <div class="meta-row"><span class="meta-label">取 引 日 　 ：</span><input id="trade-date"></div>
+      <div class="page-num">1 頁</div>
+    </div>
+  </div>
+
+  <!-- 車検証読み取り -->
+  <div style="margin-bottom:8px;" class="no-print">
+    <label style="display:inline-flex;align-items:center;gap:8px;background:#1d4ed8;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:-apple-system,sans-serif;font-size:13px;font-weight:700;">
+      📷 車検証を撮影して自動入力
+      <input type="file" id="shakken-input" accept="image/*" capture="environment" style="display:none;" onchange="readShakken(this)">
+    </label>
+    <span id="shakken-status" style="margin-left:10px;font-size:12px;color:#64748b;font-family:-apple-system,sans-serif;"></span>
+  </div>
+
+  <!-- 車両情報 -->
+  <div class="vehicle-box">
+    <div class="vehicle-grid">
+      <div class="vehicle-left">
+        <div class="vrow"><span class="vlabel">車　　種</span><input id="car-model" placeholder="マツダ CX-3 20S Lパッケージ"></div>
+        <div class="vrow"><span class="vlabel">フル型式</span><input id="car-full" placeholder="DKEFW"></div>
+        <div class="vrow"><span class="vlabel">車台番号</span><input id="car-chassis" placeholder=""></div>
+        <div class="vrow"><span class="vlabel">ボデー色</span><input id="car-color" placeholder="46V ソウルレッドクリスタルメタリック"></div>
+      </div>
+      <div>
+        <div class="vrow"><span class="vlabel">エンジン型式</span><input id="car-engine" placeholder="PE-VPS"></div>
+        <div class="vrow"><span class="vlabel">登録番号</span><input id="car-regno" placeholder="京都 500 あ 1234"></div>
+        <div class="vrow"><span class="vlabel">お客様名</span><input id="customer-name" placeholder="山田 太郎 様"></div>
+        <div class="vrow"><span class="vlabel">保険会社</span><input id="insurance" placeholder="〇〇損保　担当：△△様"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 損傷状況 -->
+  <div class="damage-box">
+    <div class="damage-title">◆ 損傷状況・修理方針</div>
+    <textarea id="damage-desc" rows="2" placeholder="例：左リアフェンダー部に陥没変形あり（約15cm×20cm）。板金修正にて対応。塗装はリアフェンダー・リアドア・バンパー一式にて協定。"></textarea>
+  </div>
+
+  <!-- 鈑金明細 -->
+  <div class="section-bar">◆ 鈑金明細　（工賃単価：9,000円 / 指数）</div>
+  <table class="dtbl">
+    <thead>
+      <tr>
+        <th class="w-rl">RL</th>
+        <th class="w-name">作業名称 / 部品名称</th>
+        <th class="w-type">区分</th>
+        <th class="w-no">部品番号</th>
+        <th class="w-qty">数量</th>
+        <th class="w-idx">指数</th>
+        <th class="w-price">部品価格</th>
+        <th class="w-tech">技術料</th>
+        <th class="w-del no-print"></th>
+      </tr>
+    </thead>
+    <tbody id="itakin-body"></tbody>
+  </table>
+  <button class="btn-add-row no-print" onclick="addRow('itakin')">＋ 行を追加</button>
+
+  <!-- 塗装明細 -->
+  <div class="section-bar" style="margin-top:6px;">◆ 塗装明細　（工賃単価：50,000円 / パネル）</div>
+  <table class="dtbl">
+    <thead>
+      <tr>
+        <th class="w-rl">RL</th>
+        <th class="w-name">作業名称 / 塗装箇所</th>
+        <th class="w-type">区分</th>
+        <th class="w-no">備考</th>
+        <th class="w-qty">数量</th>
+        <th class="w-idx">ﾊﾟﾈﾙ</th>
+        <th class="w-price">材料費</th>
+        <th class="w-tech">技術料</th>
+        <th class="w-del no-print"></th>
+      </tr>
+    </thead>
+    <tbody id="toso-body"></tbody>
+  </table>
+  <button class="btn-add-row no-print" onclick="addRow('toso')">＋ 行を追加</button>
+
+  <!-- その他 -->
+  <div class="section-bar" style="margin-top:6px;">◆ その他費用</div>
+  <div class="other-box">
+    <div class="other-row">
+      <span class="other-label">写真代</span>
+      <input type="number" id="fee-photo" value="1000" min="0" oninput="calc()" style="width:70px;text-align:right;">
+      <span class="other-label">円　</span>
+      <span class="other-label">産廃費</span>
+      <input type="number" id="fee-waste" value="2000" min="0" oninput="calc()" style="width:70px;text-align:right;">
+      <span class="other-label">円　</span>
+      <span class="other-label">ショートパーツ</span>
+      <input type="number" id="fee-short" value="2000" min="0" oninput="calc()" style="width:70px;text-align:right;">
+      <span class="other-label">円　</span>
+      <span class="other-label">その他</span>
+      <input type="text" id="fee-other-name" placeholder="項目名" style="width:80px;">
+      <input type="number" id="fee-other-amt" value="0" min="0" oninput="calc()" style="width:70px;text-align:right;">
+      <span class="other-label">円</span>
+    </div>
+  </div>
+
+  <!-- 下部エリア -->
+  <div class="bottom-area">
+    <div class="left-bottom">
+      <!-- 備考 -->
+      <div class="remarks-box">
+        <div class="box-title">備　考</div>
+        <textarea id="remarks" rows="3" placeholder="特記事項・お客様へのメモ等"></textarea>
+      </div>
+      <!-- アジャスター協定欄 -->
+      <div class="adjuster-box">
+        <div class="adjuster-title">◆ 保険アジャスター協定欄</div>
+        <div class="adj-grid">
+          <div class="adj-row"><span class="adj-label">協定日</span><input type="text" placeholder="令和　年　月　日"></div>
+          <div class="adj-row"><span class="adj-label">担当者名</span><input type="text" placeholder="　　　　　　 様"></div>
+          <div class="adj-row"><span class="adj-label">協定番号</span><input type="text" placeholder=""></div>
+          <div class="adj-row"><span class="adj-label">保険会社</span><input type="text" placeholder="〇〇損保"></div>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:6px;font-size:10px;">
+          <div>
+            <div style="color:#c0392b;font-weight:bold;margin-bottom:2px;">工場確認印</div>
+            <div class="stamp-area">印</div>
+          </div>
+          <div>
+            <div style="color:#c0392b;font-weight:bold;margin-bottom:2px;">アジャスター確認印</div>
+            <div class="stamp-area">印</div>
+          </div>
+          <div style="flex:1;font-size:10px;color:#666;padding-top:20px;">
+            ※本見積書は現状確認に基づく概算です。<br>
+            解体後に追加損傷が判明した場合は<br>
+            再協定をお願いする場合があります。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 合計 -->
+    <div class="totals-box">
+      <div class="trow"><span class="tl">修 理 技 術 料</span><span class="tv" id="t-itakin">0 円</span></div>
+      <div class="trow"><span class="tl">部 品 代 合 計</span><span class="tv" id="t-parts">0 円</span></div>
+      <div class="trow"><span class="tl">塗 装 技 術 料</span><span class="tv" id="t-toso">0 円</span></div>
+      <div class="trow"><span class="tl">塗 装 材 料 費</span><span class="tv" id="t-material">0 円</span></div>
+      <div class="trow"><span class="tl">そ の 他 費 用</span><span class="tv" id="t-other">0 円</span></div>
+      <div class="trow sub"><span class="tl">10%対象小計</span><span class="tv" id="t-subtotal">0 円</span></div>
+      <div class="trow"><span class="tl">10% 消 費 税</span><span class="tv" id="t-tax">0 円</span></div>
+      <div class="trow grand"><span class="tl">総 合 計</span><span class="tv" id="t-total">0 円</span></div>
+    </div>
+  </div>
+
+  <div class="footer-note">※部品価格の改定により、見積り金額と請求額に差が生じることがありますので、あらかじめご了承ください。　Ver.2025-12</div>
+</div>
+
+<script>
+  let iCount=0, tCount=0, focusedIdx=null;
+
+  // 車検証読み取り
+  async function readShakken(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const status = document.getElementById('shakken-status');
+    status.textContent = '読み取り中...';
+    const fd = new FormData();
+    fd.append('image', file);
+    try {
+      const res = await fetch('/api/read-shakken', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.carModel)   document.getElementById('car-model').value   = data.carModel;
+      if (data.fullModel)  document.getElementById('car-full').value    = data.fullModel;
+      if (data.chassis)    document.getElementById('car-chassis').value = data.chassis;
+      if (data.color)      document.getElementById('car-color').value   = data.color;
+      if (data.engine)     document.getElementById('car-engine').value  = data.engine;
+      if (data.regno)      document.getElementById('car-regno').value   = data.regno;
+      status.textContent = '✅ 読み取り完了';
+      setTimeout(() => status.textContent = '', 3000);
+    } catch(e) {
+      status.textContent = '❌ 読み取り失敗';
+    }
+    input.value = '';
+  }
+
+  // 日付セット
+  const d=new Date();
+  const ry=d.getFullYear()-2018;
+  const dateStr=`令和${ry}年${d.getMonth()+1}月${d.getDate()}日`;
+  document.getElementById('issue-date').value=dateStr;
+  document.getElementById('trade-date').value=dateStr;
+
+  function fmt(n){ return Math.round(n).toLocaleString('ja-JP'); }
+
+  // 行追加
+  function addRow(type, name='', kbn=''){
+    const tbody = document.getElementById(type==='itakin'?'itakin-body':'toso-body');
+    const id = type==='itakin' ? ++iCount : ++tCount;
+    const prefix = type==='itakin' ? 'i' : 't';
+    const tr = document.createElement('tr');
+    tr.id=`${prefix}row-${id}`;
+    tr.innerHTML=`
+      <td class="w-rl c"><input type="text" placeholder="L/R" style="width:24px;text-align:center;" tabindex="0"></td>
+      <td class="w-name"><input type="text" value="${name}" placeholder="部位名・作業名" style="width:100%;" tabindex="0"></td>
+      <td class="w-type c"><input type="text" value="${kbn}" placeholder="鈑金/塗装" style="width:46px;" tabindex="0"></td>
+      <td class="w-no"><input type="text" placeholder="部品番号" style="width:100%;" tabindex="0"></td>
+      <td class="w-qty r"><input type="number" value="1" min="0" style="width:30px;text-align:right;" tabindex="0" oninput="calc()"></td>
+      <td class="w-idx r"><input type="number" placeholder="0" min="0" step="0.1" id="${prefix}idx-${id}" style="width:38px;text-align:right;" tabindex="0" oninput="calc()" onfocus="focusedIdx=this"></td>
+      <td class="w-price r"><input type="number" placeholder="0" min="0" id="${prefix}price-${id}" style="width:64px;text-align:right;" tabindex="0" oninput="calc()"></td>
+      <td class="w-tech amt" id="${prefix}tech-${id}"></td>
+      <td class="w-del no-print"><button class="bdel" onclick="removeRow('${prefix}row-${id}')">×</button></td>
+    `;
+    tbody.appendChild(tr);
+    // 名前欄にフォーカス
+    tr.querySelector('input[type=text]').focus();
+    calc();
+  }
+
+  function quickAdd(type, name, kbn){
+    addRow(type, name, kbn);
+    // 追加後に指数欄にフォーカス
+    setTimeout(()=>{
+      const prefix = type==='itakin'?'i':'t';
+      const id = type==='itakin'?iCount:tCount;
+      const el = document.getElementById(`${prefix}idx-${id}`);
+      if(el){ el.focus(); focusedIdx=el; }
+    },50);
+  }
+
+  function setIdx(val){
+    if(focusedIdx){
+      focusedIdx.value=val;
+      calc();
+      focusedIdx.focus();
+    }
+  }
+
+  function removeRow(id){
+    const el=document.getElementById(id);
+    if(el) el.remove();
+    calc();
+  }
+
+  function calc(){
+    let iTech=0, iParts=0;
+    for(let i=1;i<=iCount;i++){
+      const idx=document.getElementById(`iidx-${i}`);
+      const price=document.getElementById(`iprice-${i}`);
+      const tech=document.getElementById(`itech-${i}`);
+      if(!idx) continue;
+      const t=(parseFloat(idx.value)||0)*9000;
+      const p=(parseFloat(price?.value)||0);
+      iTech+=t; iParts+=p;
+      if(tech) tech.textContent=t>0?fmt(t):'';
+    }
+    let tTech=0, tMat=0;
+    for(let i=1;i<=tCount;i++){
+      const idx=document.getElementById(`tidx-${i}`);
+      const price=document.getElementById(`tprice-${i}`);
+      const tech=document.getElementById(`ttech-${i}`);
+      if(!idx) continue;
+      const t=(parseFloat(idx.value)||0)*50000;
+      const p=(parseFloat(price?.value)||0);
+      tTech+=t; tMat+=p;
+      if(tech) tech.textContent=t>0?fmt(t):'';
+    }
+    const other=(parseFloat(document.getElementById('fee-photo').value)||0)
+               +(parseFloat(document.getElementById('fee-waste').value)||0)
+               +(parseFloat(document.getElementById('fee-short').value)||0)
+               +(parseFloat(document.getElementById('fee-other-amt').value)||0);
+    const subtotal=iTech+iParts+tTech+tMat+other;
+    const tax=Math.round(subtotal*0.1);
+    const total=subtotal+tax;
+
+    document.getElementById('t-itakin').textContent=fmt(iTech)+' 円';
+    document.getElementById('t-parts').textContent=fmt(iParts)+' 円';
+    document.getElementById('t-toso').textContent=fmt(tTech)+' 円';
+    document.getElementById('t-material').textContent=fmt(tMat)+' 円';
+    document.getElementById('t-other').textContent=fmt(other)+' 円';
+    document.getElementById('t-subtotal').textContent=fmt(subtotal)+' 円';
+    document.getElementById('t-tax').textContent=fmt(tax)+' 円';
+    document.getElementById('t-total').textContent=fmt(total)+' 円';
+  }
+
+  // 保存
+  function saveEstimate(){
+    const data={
+      slipNo:document.getElementById('slip-no').value,
+      issueDate:document.getElementById('issue-date').value,
+      tradeDate:document.getElementById('trade-date').value,
+      carModel:document.getElementById('car-model').value,
+      carFull:document.getElementById('car-full').value,
+      carChassis:document.getElementById('car-chassis').value,
+      carColor:document.getElementById('car-color').value,
+      carEngine:document.getElementById('car-engine').value,
+      carRegno:document.getElementById('car-regno').value,
+      customerName:document.getElementById('customer-name').value,
+      insurance:document.getElementById('insurance').value,
+      damageDesc:document.getElementById('damage-desc').value,
+      remarks:document.getElementById('remarks').value,
+      feePhoto:document.getElementById('fee-photo').value,
+      feeWaste:document.getElementById('fee-waste').value,
+      feeShort:document.getElementById('fee-short').value,
+      feeOtherName:document.getElementById('fee-other-name').value,
+      feeOtherAmt:document.getElementById('fee-other-amt').value,
+      iCount, tCount,
+      html: document.querySelector('.page').innerHTML
+    };
+    const key=`estimate_${Date.now()}`;
+    localStorage.setItem(key,JSON.stringify(data));
+    localStorage.setItem('estimate_last',key);
+    alert(`保存しました（${document.getElementById('customer-name').value||'無題'}）`);
+  }
+
+  // 呼出
+  function loadEstimate(){
+    const keys=Object.keys(localStorage).filter(k=>k.startsWith('estimate_')&&k!=='estimate_last').sort().reverse();
+    if(keys.length===0){alert('保存データがありません');return;}
+    const list=keys.map((k,i)=>{
+      try{const d=JSON.parse(localStorage.getItem(k));return `${i+1}. ${d.customerName||'無題'} ${d.issueDate||''}`;}catch{return `${i+1}. ${k}`;}
+    }).join('\n');
+    const sel=prompt(`呼び出す番号を入力:\n${list}`);
+    if(!sel) return;
+    const idx=parseInt(sel)-1;
+    if(isNaN(idx)||idx<0||idx>=keys.length){alert('無効な番号です');return;}
+    const data=JSON.parse(localStorage.getItem(keys[idx]));
+    document.querySelector('.page').innerHTML=data.html;
+    iCount=data.iCount||0; tCount=data.tCount||0;
+    calc();
+    alert('呼び出しました');
+  }
+
+  // 新規
+  function newEstimate(){
+    if(!confirm('新規作成します。現在の内容は保存されていない場合失われます。')) return;
+    location.reload();
+  }
+
+  // 初期行
+  addRow('itakin','','鈑金');
+  addRow('itakin','','鈑金');
+  addRow('toso','','塗装');
+
+  calc();
+</script>
+</body>
+</html>
