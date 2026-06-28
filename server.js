@@ -175,5 +175,8 @@ ${memo ? `お客様メモ：${memo}` : ''}
   }
 });
 
+// keep-alive ping endpoint
+app.get('/ping', (req, res) => res.json({ ok: true }));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));

@@ -384,6 +384,9 @@
 <script>
   let damageFiles=[], shakkenFile=null, iCount=0, tCount=0;
 
+  // サーバーを5分おきにpingして寝かせない
+  setInterval(()=>fetch('/ping').catch(()=>{}), 5*60*1000);
+
   // 損傷写真追加
   function addDamagePhotos(input){
     [...input.files].forEach(f=>{
@@ -434,22 +437,49 @@
   async function analyze(){
     document.getElementById('analyze-btn').disabled=true;
     document.getElementById('loading').classList.add('show');
+    const loadingP = document.querySelector('.loading p');
+
     const fd=new FormData();
     damageFiles.forEach(f=>fd.append('damage',f));
     if(shakkenFile) fd.append('shakken',shakkenFile);
     fd.append('memo',document.getElementById('memo-input').value);
+
+    // メッセージを段階的に変える
+    const msgs = [
+      'サーバーに接続中...',
+      'AIが写真を解析中...',
+      '板金・塗装を判定中...',
+      'もうすぐ完成です...'
+    ];
+    let mi = 0;
+    const msgTimer = setInterval(()=>{
+      if(mi < msgs.length) loadingP.innerHTML = msgs[mi++] + '<br><span style="font-size:11px;">初回は1分ほどかかる場合があります</span>';
+    }, 12000);
+
     try{
-      const res=await fetch('/api/estimate-ai',{method:'POST',body:fd});
+      const res = await fetch('/api/estimate-ai', {
+        method:'POST',
+        body:fd,
+        signal: AbortSignal.timeout(120000) // 2分タイムアウト
+      });
+      if(!res.ok) throw new Error('server error');
       const data=await res.json();
       if(data.error) throw new Error(data.error);
       fillEstimate(data);
       document.getElementById('step-photo').style.display='none';
       document.getElementById('step-result').style.display='block';
     }catch(e){
-      alert('解析に失敗しました。もう一度お試しください。');
+      if(e.name==='TimeoutError'){
+        alert('タイムアウトしました。\nサーバーが起動中の可能性があります。\n30秒後にもう一度お試しください。');
+      } else {
+        alert('解析に失敗しました。もう一度お試しください。');
+      }
       document.getElementById('analyze-btn').disabled=false;
+    } finally {
+      clearInterval(msgTimer);
+      document.getElementById('loading').classList.remove('show');
+      loadingP.innerHTML = 'AIが損傷を解析中です...<br><span style="font-size:12px;">10〜20秒かかります</span>';
     }
-    document.getElementById('loading').classList.remove('show');
   }
 
   // 見積書に自動入力
