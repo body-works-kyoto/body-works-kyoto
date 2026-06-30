@@ -387,19 +387,43 @@
   // サーバーを5分おきにpingして寝かせない
   setInterval(()=>fetch('/ping').catch(()=>{}), 5*60*1000);
 
-  // 損傷写真追加
+  // 損傷写真追加（リサイズして軽量化）
   function addDamagePhotos(input){
     [...input.files].forEach(f=>{
+      const idx = damageFiles.length;
       damageFiles.push(f);
-      const url=URL.createObjectURL(f);
+      // サムネだけ小さく表示
       const div=document.createElement('div');
       div.className='photo-thumb';
-      const idx=damageFiles.length-1;
-      div.innerHTML=`<img src="${url}"><button class="photo-del" onclick="removeDamage(${idx})">×</button>`;
+      div.id=`thumb-${idx}`;
+      div.innerHTML=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;">📷</div><button class="photo-del" onclick="removeDamage(${idx})">×</button>`;
       document.getElementById('damage-grid').appendChild(div);
+      // 非同期でサムネ生成
+      resizeImage(f, 200).then(url=>{
+        const t=document.getElementById(`thumb-${idx}`);
+        if(t) t.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;"><button class="photo-del" onclick="removeDamage(${idx})">×</button>`;
+      });
     });
     input.value='';
     updateBtn();
+  }
+
+  function resizeImage(file, maxSize){
+    return new Promise(resolve=>{
+      const img=new Image();
+      const url=URL.createObjectURL(file);
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        let w=img.width, h=img.height;
+        if(w>h){ if(w>maxSize){h=h*maxSize/w;w=maxSize;} }
+        else { if(h>maxSize){w=w*maxSize/h;h=maxSize;} }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg',0.7));
+      };
+      img.src=url;
+    });
   }
 
   function removeDamage(idx){
@@ -412,11 +436,15 @@
     const grid=document.getElementById('damage-grid');
     grid.innerHTML='';
     damageFiles.forEach((f,i)=>{
-      const url=URL.createObjectURL(f);
       const div=document.createElement('div');
       div.className='photo-thumb';
-      div.innerHTML=`<img src="${url}"><button class="photo-del" onclick="removeDamage(${i})">×</button>`;
+      div.id=`thumb-${i}`;
+      div.innerHTML=`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:20px;">📷</div><button class="photo-del" onclick="removeDamage(${i})">×</button>`;
       grid.appendChild(div);
+      resizeImage(f,200).then(url=>{
+        const t=document.getElementById(`thumb-${i}`);
+        if(t) t.innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;"><button class="photo-del" onclick="removeDamage(${i})">×</button>`;
+      });
     });
   }
 
