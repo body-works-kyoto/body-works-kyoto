@@ -180,10 +180,13 @@
   <div class="photo-section">
     <!-- 損傷写真 -->
     <div class="photo-title"><span>1</span>損傷写真（複数OK）</div>
-    <div class="photo-grid" id="damage-grid"></div>
+    <div id="photo-count" style="display:none;background:#0f1f3d;color:#fff;border-radius:10px;padding:12px 16px;margin-bottom:8px;font-size:15px;font-weight:700;">
+      📷 <span id="photo-num">0</span>枚 選択済み
+      <button onclick="clearPhotos()" style="float:right;background:#dc2626;color:#fff;border:none;border-radius:6px;padding:2px 10px;font-size:12px;cursor:pointer;">クリア</button>
+    </div>
     <button class="add-photo-btn" onclick="pickPhoto()">
       <div class="icon">📷</div>
-      <div class="label">写真を追加</div>
+      <div class="label">写真を追加（何枚でもOK）</div>
     </button>
   </div>
 
@@ -384,40 +387,39 @@
   // サーバーを5分おきにpingして寝かせない
   setInterval(()=>fetch('/ping').catch(()=>{}), 5*60*1000);
 
-  // 毎回新しいinputを生成してiOSフリーズを防ぐ
   function pickPhoto(){
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.style.display = 'none';
+    input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
     input.onchange = function(){
       const f = input.files[0];
-      if(!f) return;
-      const idx = damageFiles.length;
-      damageFiles.push(f);
-      const div = document.createElement('div');
-      div.className = 'photo-thumb';
-      div.id = `thumb-${idx}`;
-      const url = URL.createObjectURL(f);
-      div.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;"><button class="photo-del" onclick="removeDamage(${idx})">×</button>`;
-      document.getElementById('damage-grid').appendChild(div);
-      document.body.removeChild(input);
-      updateBtn();
+      if(f){
+        damageFiles.push(f);
+        updatePhotoCount();
+        updateBtn();
+      }
+      setTimeout(()=>{ try{document.body.removeChild(input);}catch(e){} }, 500);
     };
     document.body.appendChild(input);
-    input.click();
+    setTimeout(()=>input.click(), 50);
   }
 
-  function removeDamage(idx){
-    damageFiles[idx]=null;
-    const el=document.getElementById(`thumb-${idx}`);
-    if(el) el.remove();
-    damageFiles = damageFiles.filter(f=>f!==null);
-    // idを振り直す
-    document.querySelectorAll('.photo-thumb').forEach((el,i)=>{
-      el.id=`thumb-${i}`;
-      el.querySelector('.photo-del').setAttribute('onclick',`removeDamage(${i})`);
-    });
+  function updatePhotoCount(){
+    const n = damageFiles.length;
+    const box = document.getElementById('photo-count');
+    const num = document.getElementById('photo-num');
+    if(n > 0){
+      box.style.display = 'block';
+      num.textContent = n;
+    } else {
+      box.style.display = 'none';
+    }
+  }
+
+  function clearPhotos(){
+    damageFiles = [];
+    updatePhotoCount();
     updateBtn();
   }
 
