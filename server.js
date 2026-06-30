@@ -78,36 +78,43 @@ app.post('/api/suggest-dinner', async (req, res) => {
   }
 });
 
+// iOSのHEIC等をjpegとして扱う
+function safeMediaType(mimetype) {
+  const allowed = ['image/jpeg','image/png','image/gif','image/webp'];
+  return allowed.includes(mimetype) ? mimetype : 'image/jpeg';
+}
+
 app.post('/api/estimate-ai', upload.fields([{ name: 'damage', maxCount: 10 }, { name: 'shakken' }]), async (req, res) => {
   try {
+    console.log('estimate-ai called, files:', JSON.stringify(Object.keys(req.files||{})));
     const content = [];
     (req.files?.damage || []).forEach(f => {
-      content.push({ type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } });
+      console.log('damage file:', f.mimetype, f.size);
+      content.push({ type: 'image', source: { type: 'base64', media_type: safeMediaType(f.mimetype), data: f.buffer.toString('base64') } });
     });
     if (req.files?.shakken?.[0]) {
       const f = req.files.shakken[0];
-      content.push({ type: 'image', source: { type: 'base64', media_type: f.mimetype, data: f.buffer.toString('base64') } });
+      console.log('shakken file:', f.mimetype, f.size);
+      content.push({ type: 'image', source: { type: 'base64', media_type: safeMediaType(f.mimetype), data: f.buffer.toString('base64') } });
+    }
+    if(content.length === 0) {
+      return res.status(400).json({ error: '写真が届きませんでした。もう一度お試しください。' });
     }
     const memo = req.body.memo || '';
-    content.push({ type: 'text', text: `あなたは日本の板金塗装の熟練見積もり職人です。損傷写真と車検証（あれば）を見て、以下のJSON形式のみで回答してください。
+    content.push({ type: 'text', text: `あなたは日本の板金塗装の熟練見積もり職人です。損傷写真を見て、以下のJSON形式のみで回答してください。余分なテキスト不要。
 単価：板金1指数=9000円、塗装1パネル=50000円
 ${memo ? 'メモ：' + memo : ''}
-{
-  "car":{"model":"車種・グレード","fullModel":"フル型式","chassis":"車台番号","color":"ボデー色コードと名称","engine":"エンジン型式","regno":"登録番号"},
-  "itakin":[{"rl":"L/R/なし","name":"部位名","type":"鈑金/取替","detail":"損傷説明","index":数値,"partNo":"","partPrice":0}],
-  "toso":[{"rl":"L/R/なし","name":"塗装箇所名","type":"塗装","panels":数値,"partPrice":0}],
-  "parts":[{"name":"部品名","partNo":"部品番号","qty":1,"partPrice":数値,"laborPrice":数値}],
-  "damage":"損傷状況の総合説明（アジャスター向け）",
-  "other":{"photo":1000,"waste":2000,"short":2000}
-}` });
+{"car":{"model":"車種","fullModel":"","chassis":"","color":"","engine":"","regno":""},"itakin":[{"rl":"L","name":"部位名","type":"鈑金","index":2.0,"partPrice":0}],"toso":[{"rl":"L","name":"塗装箇所","type":"塗装","panels":1,"partPrice":0}],"parts":[],"damage":"損傷状況説明","other":{"photo":1000,"waste":2000,"short":2000}}` });
 
     const response = await client.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content }] });
-    const text = response.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    const raw = response.content[0].text.trim();
+    console.log('AI response:', raw.substring(0,200));
+    const text = raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
     const data = JSON.parse(text);
     res.json(data);
   } catch(err) {
-    console.error(err);
-    res.status(500).json({ error: '解析に失敗しました' });
+    console.error('estimate-ai error:', err.message);
+    res.status(500).json({ error: `解析エラー: ${err.message}` });
   }
 });
 
