@@ -391,14 +391,12 @@
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    input.multiple = true;
     input.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0;';
     input.onchange = function(){
-      const f = input.files[0];
-      if(f){
-        damageFiles.push(f);
-        updatePhotoCount();
-        updateBtn();
-      }
+      [...input.files].forEach(f => damageFiles.push(f));
+      updatePhotoCount();
+      updateBtn();
       setTimeout(()=>{ try{document.body.removeChild(input);}catch(e){} }, 500);
     };
     document.body.appendChild(input);
